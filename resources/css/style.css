@@ -1,0 +1,36 @@
+
+.container {
+    width: 960px;
+}
+
+.jumbotron {
+    border: 5px solid red;
+    font-family: 'Charm', cursive;
+    font-size: 2em;
+}
+
+
+
+body {
+    background-repeat: no-repeat;
+    background-size: cover;
+
+     /**
+     * darken image with black-to-black gradient so overlayed text contrasts better
+     * gradient transparency 70%. red, blue, green, alpha (rgba) used.
+     */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3)),
+    url(../img/winter2.jpg);
+}
+
+.sectionheader {
+    font-size: 1.5em;
+}
+
+.form-group {
+    font-size: 1.25em;
+}
+
+#myTable {
+    font-size: 1.25em;
+}
