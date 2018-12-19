@@ -40,7 +40,7 @@ var capturedName, capturedDest, capturedTime, capturedFreq;
 var counter = 0;
 
 /* ==========================================================================
-   On click Event to capture user input
+   On Click Event to capture user input
    ========================================================================== */
 
 $('#enterData').on('click','#submit', function(e) {
@@ -59,9 +59,26 @@ $('#enterData').on('click','#submit', function(e) {
     // log to ensure data is captured
     console.log('data captured ', capturedName, capturedDest, capturedTime, capturedFreq);
 
-    // do math to update the train's schedule via the trainMath function
-    // takes no arguments as I was lazy and made the captured data variables global to reduce typing code :)
-    trainMath();
+    // First Time (pushed back 1 day to make sure it comes before current time)
+    var capturedTimeConverted = moment(capturedTime, 'HH:mm').subtract(1, 'day');
+    console.log('capturedTime subtract 1 day ago ' + capturedTimeConverted);
+
+    // Difference between the time 1 day ago and time now in minutes
+    var diffTime = moment().diff(moment(capturedTimeConverted), 'minutes');
+    console.log('DIFFERENCE IN TIME: ' + diffTime);
+
+    // Time apart: difference in mins mod captured train frequency
+    var tRemainder = diffTime % capturedFreq;
+    console.log('remainder from mod div of captured train frequency and diffed time: ', tRemainder);
+
+    // Minutes until next train
+    var tMinutesTillTrain = capturedFreq - tRemainder;
+    console.log('MINUTES TILL TRAIN: ' + tMinutesTillTrain);
+
+    // Next Train exact time
+    var nextTrain = moment().add(tMinutesTillTrain, 'minutes');
+    nextTrain = (nextTrain).format('HH:mm');
+    console.log('Next Train Arrival ', nextTrain);
 
     // store data collected from user into an object
     var newTrain = {
@@ -85,39 +102,20 @@ $('#enterData').on('click','#submit', function(e) {
 
 });
 
-/* ==========================================================================
-   Train Schedule Math
-   ========================================================================== */
-
-function trainMath() {
-    // First Time (pushed back 1 day to make sure it comes before current time)
-    var capturedTimeConverted = moment(capturedTime, 'HH:mm').subtract(1, 'day');
-    console.log('capturedTime subtract 1 day ago ' + capturedTimeConverted);
-
-    // Difference between the time 1 day ago and time now in minutes
-    var diffTime = moment().diff(moment(capturedTimeConverted), 'minutes');
-    console.log('DIFFERENCE IN TIME: ' + diffTime);
-
-    // Time apart: difference in mins mod captured train frequency
-    var tRemainder = diffTime % capturedFreq;
-    console.log('remainder from mod div of captured train frequency and diffed time: ', tRemainder);
-
-    // Minutes until next train
-    var tMinutesTillTrain = capturedFreq - tRemainder;
-    console.log('MINUTES TILL TRAIN: ' + tMinutesTillTrain);
-
-    // Next Train exact time
-    var nextTrain = moment().add(tMinutesTillTrain, 'minutes');
-    nextTrain = (nextTrain).format('HH:mm');
-    console.log('Next Train Arrival ', nextTrain);
-}
-
 
 /* ==========================================================================
-   Update Table Fuction
+   Update DB and Display in table on screen
    ========================================================================== */
-function updateTable(fromDB) {
-// increment counter and so the table row header can be updated and entered into the table
+
+// Enable continuous updates
+
+
+
+// database listener that will display updates to database as soon as detected
+// the variable 'fromDB' is used in our callback function
+database.ref().on('child_added', function(fromDB) {
+    
+    // increment counter and so the table row header can be updated and entered into the table
     counter++;
 
     // pull data from DB
@@ -126,66 +124,37 @@ function updateTable(fromDB) {
     var tdFreq = (fromDB.val().storedFreq);
     var tdMins = (fromDB.val().storedMinsTill);
     var tdNext = (fromDB.val().storedNextTrain);
- 
-    // create modal button for train update
+
+    // create modal button
+    // rigger the modal with a button
+    // <button type="button" class="btn btn-info btn-lg" data-toggle="modal" data-target="#myModal">Open Modal</button>
     var mButton = $('<button>');
     mButton.attr('class', 'btn btn-secondary m-2 updateTrain');
     mButton.attr('data-toggle','modal');
     mButton.attr('data-target','#myModal');
- 
+
     // add ion-icon to button
     var mButtonIcon = $('<ion-icon>');
     mButtonIcon.attr('size','medium');
     mButtonIcon.attr('name','build');
     mButton.append(mButtonIcon);
- 
- 
+
+
     // append new table row each time database listener function fires
     // tr id matches the counter number
     $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNext+'</td><td class="tdm">'+tdMins+'</td></tr>');
- 
+
     // append the button to the table record.  For some reason if I added the button to the table in the method above,
     // the button would be added as an 'object' not a button element
     $('#myTable tr:last').append(mButton);
-}
-
-/* ==========================================================================
-   DB Listener for DB Changes
-   ========================================================================== */
-
-// database listener that will display updates to database as soon as detected
-// the variable 'updatedData' is used in our callback function
-database.ref().on('child_added', function(updatedData) {
-    
-    // Database listener calls updateTable if/when there is a change
-    // Must pass the data from listener to updateTable function (this is more like python ...ahhhh :)
-    updateTable(updatedData);
     
 }, function(errorObject) {
     console.log('the DB read to page failed: ', errorObject.code);
 
 });
 
-
 /* ==========================================================================
-   Update Table Every 5mins
-   ========================================================================== */
-// get db snapshot every 5 mins, setInterval
-// do math
-// update table
-
-// this function will run automatically without being explicity called via an event or init()
-// cannot have setinterval call a function that then calls the db snapshot.  The DB snapshop must
-// be the function called directly by setInterval
-
-var myVar = setInterval(database.ref().on('value', function(snapshot) {
-    console.log('still in DB function, Odoyle Rules!');
-}),60000); // outer of setInterval 60secs;
-
-
-
-/* ==========================================================================
-   Click Event on Edit Train - CRUD
+   Click Event on Update
    ========================================================================== */
 
 /*  
@@ -237,15 +206,3 @@ $('#myModal').on('click','#submitUpdateData', function(e) {
     // listener should pick up updates
 
 });
-
-/* ==========================================================================
-   Wall Clock
-   ========================================================================== */
-
-var timerVar = setInterval(myTimer, 1000);
-
-function myTimer() {
-    var d = new Date();
-    var t = d.toLocaleTimeString();
-    document.getElementById('wallClock').innerHTML = t;
-}

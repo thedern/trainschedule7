@@ -34,3 +34,7 @@ body {
 #myTable {
     font-size: 1.25em;
 }
+
+#trainIcon ion-icon {
+    font-size: 64px;
+}
