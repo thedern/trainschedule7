@@ -1,19 +1,6 @@
 
 
 /* ==========================================================================
-   Basic Instructions
-   ========================================================================== */
-/*
-When adding trains, administrators should be able to submit the following:
-Train Name <== Done
-Destination  <== Done
-First Train Time -- in military time <== Done
-Frequency -- in minutes  <== Done
-Code this app to calculate when the next train will arrive; this should be relative to the current time.
-Users from many different machines must be able to view same train times.
-Styling and theme are completely up to you. Get Creative!*/
-
-/* ==========================================================================
    Connect to Firebase
    ========================================================================== */
 
@@ -33,11 +20,11 @@ firebase.initializeApp(config);
   
 // Create a variable to reference the database.
 var database = firebase.database();
-console.log(database);
 
-// global variables to use to capture data from form and feed into datase
-var capturedName, capturedDest, capturedTime, capturedFreq;
+// global counter variable so does not get reset to 0 in function call
 var counter = 0;
+
+
 
 /* ==========================================================================
    On click Event to capture user input
@@ -50,31 +37,30 @@ $('#enterData').on('click','#submit', function(e) {
        leave time of first train as a string, it will be parsed by moment.js below
        convert minutes to integer before moving on to the time manipulation */
 
-    capturedName = $('#tName').val().trim();
-    capturedDest = $('#tDest').val().trim();
-    capturedTime = $('#tTime').val().trim();
+    var capturedName = $('#tName').val().trim();
+    var capturedDest = $('#tDest').val().trim();
+    var capturedFirstRun = $('#tTime').val().trim();
     // must be parsed as an integer
-    capturedFreq = parseInt($('#tFreq').val().trim());
+    var capturedFreq = parseInt($('#tFreq').val().trim());
 
     // log to ensure data is captured
-    console.log('data captured ', capturedName, capturedDest, capturedTime, capturedFreq);
+    // console.log('data captured ', capturedName, capturedDest, capturedTime, capturedFreq);
 
-    // do math to update the train's schedule via the trainMath function
-    // takes no arguments as I was lazy and made the captured data variables global to reduce typing code :)
-    trainMath();
+    // do math to update the train's schedule based on initial schedule start time and run frequency
+    var retValues = trainMath(capturedFirstRun, capturedFreq);
 
     // store data collected from user into an object
     var newTrain = {
         storedName: capturedName,
         storedDest: capturedDest,
-        storedFirstRun: capturedTime,
+        storedFirstRun: capturedFirstRun,
         storedFreq: capturedFreq,
-        storedMinsTill : tMinutesTillTrain,
-        storedNextTrain : nextTrain
+        //return data from trainMath (array)
+        storedNextTrain : retValues[0],
+        storedMinsTill : retValues[1]
     };
-    console.log(newTrain);
 
-    // upload the data to the firebase database
+    // upload the data to the firebase database.  The DB listener will catch this insert and update the table on-screen
     database.ref().push(newTrain);
  
     // clear form after data is entered into database
@@ -85,13 +71,18 @@ $('#enterData').on('click','#submit', function(e) {
 
 });
 
+
+
 /* ==========================================================================
    Train Schedule Math
    ========================================================================== */
 
-function trainMath() {
+// takes intial train start time and frequency as arguments
+function trainMath(firstRun, runFreq) {
+    console.log('in trainMath');
+
     // First Time (pushed back 1 day to make sure it comes before current time)
-    var capturedTimeConverted = moment(capturedTime, 'HH:mm').subtract(1, 'day');
+    var capturedTimeConverted = moment(firstRun, 'HH:mm').subtract(1, 'day');
     console.log('capturedTime subtract 1 day ago ' + capturedTimeConverted);
 
     // Difference between the time 1 day ago and time now in minutes
@@ -99,34 +90,35 @@ function trainMath() {
     console.log('DIFFERENCE IN TIME: ' + diffTime);
 
     // Time apart: difference in mins mod captured train frequency
-    var tRemainder = diffTime % capturedFreq;
+    var tRemainder = diffTime % runFreq;
     console.log('remainder from mod div of captured train frequency and diffed time: ', tRemainder);
 
     // Minutes until next train
-    var tMinutesTillTrain = capturedFreq - tRemainder;
+    var tMinutesTillTrain = runFreq - tRemainder;
     console.log('MINUTES TILL TRAIN: ' + tMinutesTillTrain);
 
     // Next Train exact time
     var nextTrain = moment().add(tMinutesTillTrain, 'minutes');
     nextTrain = (nextTrain).format('HH:mm');
     console.log('Next Train Arrival ', nextTrain);
+
+    // since there are 2 return values, using an array
+    return [nextTrain, tMinutesTillTrain];
 }
+
 
 
 /* ==========================================================================
    Update Table Fuction
    ========================================================================== */
-function updateTable(fromDB) {
-// increment counter and so the table row header can be updated and entered into the table
+
+function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill) {
+    // increment counter and so the table row header can be updated and entered into the table
+
+    console.log('in update table');
+    console.log(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill);
     counter++;
 
-    // pull data from DB
-    var tdName = (fromDB.val().storedName);
-    var tdDestination = (fromDB.val().storedDest);
-    var tdFreq = (fromDB.val().storedFreq);
-    var tdMins = (fromDB.val().storedMinsTill);
-    var tdNext = (fromDB.val().storedNextTrain);
- 
     // create modal button for train update
     var mButton = $('<button>');
     mButton.attr('class', 'btn btn-secondary m-2 updateTrain');
@@ -139,48 +131,76 @@ function updateTable(fromDB) {
     mButtonIcon.attr('name','build');
     mButton.append(mButtonIcon);
  
- 
-    // append new table row each time database listener function fires
-    // tr id matches the counter number
-    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNext+'</td><td class="tdm">'+tdMins+'</td></tr>');
- 
+    // append new record from listenter
+    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td></tr>');
+        
     // append the button to the table record.  For some reason if I added the button to the table in the method above,
     // the button would be added as an 'object' not a button element
     $('#myTable tr:last').append(mButton);
+ 
 }
+
+
 
 /* ==========================================================================
    DB Listener for DB Changes
    ========================================================================== */
 
-// database listener that will display updates to database as soon as detected
-// the variable 'updatedData' is used in our callback function
+// database listener that will display updates to database as soon as detected, 'updatedData' is used in our callback function
 database.ref().on('child_added', function(updatedData) {
-    
-    // Database listener calls updateTable if/when there is a change
-    // Must pass the data from listener to updateTable function (this is more like python ...ahhhh :)
-    updateTable(updatedData);
+
+    // Due to the setInterval function that updates the table every 5 mins, must pass 
+    // each field indually to updateTable, cannot simply pass updatedData object as a whole
+    var tdName = (updatedData.val().storedName);
+    var tdDestination = (updatedData.val().storedDest);
+    var tdFreq = (updatedData.val().storedFreq);
+    var tdMinsTill = (updatedData.val().storedMinsTill);
+    var tdNextTrain = (updatedData.val().storedNextTrain);
+
+    // update the table with newly entered record
+    updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill);
     
 }, function(errorObject) {
     console.log('the DB read to page failed: ', errorObject.code);
-
+    
 });
 
 
+
 /* ==========================================================================
-   Update Table Every 5mins
+   Refresh Table Every 5mins 
    ========================================================================== */
-// get db snapshot every 5 mins, setInterval
-// do math
-// update table
 
 // this function will run automatically without being explicity called via an event or init()
-// cannot have setinterval call a function that then calls the db snapshot.  The DB snapshop must
-// be the function called directly by setInterval
+var myVar = setInterval(tableRefresh, 10000);
 
-var myVar = setInterval(database.ref().on('value', function(snapshot) {
-    console.log('still in DB function, Odoyle Rules!');
-}),60000); // outer of setInterval 60secs;
+// refresh the table with updated data
+function tableRefresh() {
+
+    console.log('in tableRefresh');
+
+    // empty the on-screen table
+    //$('#myTable').empty();  
+
+    // get root of DB, this is most logical as we are not assigning ID's but letting Firebase do it
+    var dataRoot = database.ref();
+    // calls DB with promise (like ajax call)
+    dataRoot.once('value').then(function(snapshot) {
+        // iterate through the DB looking at each child, get name
+        snapshot.forEach(function(childSnapshot) {
+            var childData = childSnapshot.val();
+
+            // do the math to calculate the next train and remaining mins
+            var retValues = trainMath(childData.storedFirstRun, childData.storedFreq);
+            
+            console.log(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1])
+            // via this loop refresh the table with newly entered record, cant
+            updateTable(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1]);
+
+        });
+        
+    });
+}
 
 
 
@@ -239,7 +259,7 @@ $('#myModal').on('click','#submitUpdateData', function(e) {
 });
 
 /* ==========================================================================
-   Wall Clock
+   Wall Clock - Displayed Above Schedule Table
    ========================================================================== */
 
 var timerVar = setInterval(myTimer, 1000);
