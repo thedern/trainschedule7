@@ -1,3 +1,9 @@
+/* ==========================================================================
+   My one lonely global
+   ========================================================================== */
+// global counter variable so does not get reset to 0 in function call
+var counter = 0;
+
 
 
 /* ==========================================================================
@@ -18,16 +24,16 @@ var config = {
 // connect to firebase
 firebase.initializeApp(config);
   
-// Create a variable to reference the database.
+// create a variable to reference the database.
 var database = firebase.database();
 
-// global counter variable so does not get reset to 0 in function call
-var counter = 0;
+// call table refresh immediately so data displayed shows the correct times based on current time
+tableRefresh();
 
 
 
 /* ==========================================================================
-   On click Event to capture user input
+   On click Event to capture user train info input
    ========================================================================== */
 
 $('#enterData').on('click','#submit', function(e) {
@@ -42,9 +48,6 @@ $('#enterData').on('click','#submit', function(e) {
     var capturedFirstRun = $('#tTime').val().trim();
     // must be parsed as an integer
     var capturedFreq = parseInt($('#tFreq').val().trim());
-
-    // log to ensure data is captured
-    // console.log('data captured ', capturedName, capturedDest, capturedTime, capturedFreq);
 
     // do math to update the train's schedule based on initial schedule start time and run frequency
     var retValues = trainMath(capturedFirstRun, capturedFreq);
@@ -79,28 +82,23 @@ $('#enterData').on('click','#submit', function(e) {
 
 // takes intial train start time and frequency as arguments
 function trainMath(firstRun, runFreq) {
-    console.log('in trainMath');
+    //console.log('in trainMath');
 
     // First Time (pushed back 1 day to make sure it comes before current time)
     var capturedTimeConverted = moment(firstRun, 'HH:mm').subtract(1, 'day');
-    console.log('capturedTime subtract 1 day ago ' + capturedTimeConverted);
 
     // Difference between the time 1 day ago and time now in minutes
     var diffTime = moment().diff(moment(capturedTimeConverted), 'minutes');
-    console.log('DIFFERENCE IN TIME: ' + diffTime);
 
     // Time apart: difference in mins mod captured train frequency
     var tRemainder = diffTime % runFreq;
-    console.log('remainder from mod div of captured train frequency and diffed time: ', tRemainder);
-
+    
     // Minutes until next train
     var tMinutesTillTrain = runFreq - tRemainder;
-    console.log('MINUTES TILL TRAIN: ' + tMinutesTillTrain);
 
     // Next Train exact time
     var nextTrain = moment().add(tMinutesTillTrain, 'minutes');
     nextTrain = (nextTrain).format('HH:mm');
-    console.log('Next Train Arrival ', nextTrain);
 
     // since there are 2 return values, using an array
     return [nextTrain, tMinutesTillTrain];
@@ -113,30 +111,14 @@ function trainMath(firstRun, runFreq) {
    ========================================================================== */
 
 function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill) {
+    
+    //console.log('in update table');
+
     // increment counter and so the table row header can be updated and entered into the table
-
-    console.log('in update table');
-    console.log(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill);
     counter++;
-
-    // create modal button for train update
-    var mButton = $('<button>');
-    mButton.attr('class', 'btn btn-secondary m-2 updateTrain');
-    mButton.attr('data-toggle','modal');
-    mButton.attr('data-target','#myModal');
- 
-    // add ion-icon to button
-    var mButtonIcon = $('<ion-icon>');
-    mButtonIcon.attr('size','medium');
-    mButtonIcon.attr('name','build');
-    mButton.append(mButtonIcon);
  
     // append new record from listenter
     $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td></tr>');
-        
-    // append the button to the table record.  For some reason if I added the button to the table in the method above,
-    // the button would be added as an 'object' not a button element
-    $('#myTable tr:last').append(mButton);
  
 }
 
@@ -149,7 +131,7 @@ function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill) {
 // database listener that will display updates to database as soon as detected, 'updatedData' is used in our callback function
 database.ref().on('child_added', function(updatedData) {
 
-    // Due to the setInterval function that updates the table every 5 mins, must pass 
+    // Due to the setInterval function that updates the table every 1 mins, must pass 
     // each field indually to updateTable, cannot simply pass updatedData object as a whole
     var tdName = (updatedData.val().storedName);
     var tdDestination = (updatedData.val().storedDest);
@@ -168,11 +150,11 @@ database.ref().on('child_added', function(updatedData) {
 
 
 /* ==========================================================================
-   Refresh Table Every 5mins 
+   Refresh Table Every 1 min
    ========================================================================== */
 
 // this function will run automatically without being explicity called via an event or init()
-var myVar = setInterval(tableRefresh, 10000);
+var myVar = setInterval(tableRefresh, 60000);
 
 // refresh the table with updated data
 function tableRefresh() {
@@ -181,10 +163,11 @@ function tableRefresh() {
 
     // empty the on-screen table
     //$('#myTable').empty();  
+    var localCount = 0;
 
     // get root of DB, this is most logical as we are not assigning ID's but letting Firebase do it
     var dataRoot = database.ref();
-    // calls DB with promise (like ajax call)
+    // calls DB with a 'promise' (like ajax call)
     dataRoot.once('value').then(function(snapshot) {
         // iterate through the DB looking at each child, get name
         snapshot.forEach(function(childSnapshot) {
@@ -193,10 +176,14 @@ function tableRefresh() {
             // do the math to calculate the next train and remaining mins
             var retValues = trainMath(childData.storedFirstRun, childData.storedFreq);
             
-            console.log(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1])
-            // via this loop refresh the table with newly entered record, cant
-            updateTable(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1]);
-
+            console.log(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1]);
+            // via this loop refresh the table with newly entered record
+            // each row was given an ID matching its row count
+            localCount++;
+           
+            // by row ID, replace each row in the table, used replaceWith as append will keep adding to table
+            $('tr#'+localCount).replaceWith('<tr id="'+localCount+'"><th scope="row">'+localCount+'</th><td class=tdn>'+childData.storedName+'</td><td class="tdd">'+childData.storedDest+'</td><td class="tdf">'+childData.storedFreq+'</td><td class="tdn">'+retValues[0]+'</td><td class="tdm">'+retValues[1]+'</td></tr>');
+            
         });
         
     });
@@ -207,6 +194,22 @@ function tableRefresh() {
 /* ==========================================================================
    Click Event on Edit Train - CRUD
    ========================================================================== */
+
+// create modal button for train update
+var mButton = $('<button>');
+mButton.attr('class', 'btn btn-secondary updateTrain float-right');
+mButton.attr('data-toggle','modal');
+mButton.attr('data-target','#myModal');
+
+// add ion-icon to button
+var mButtonIcon = $('<ion-icon>');
+mButtonIcon.attr('size','medium');
+mButtonIcon.attr('name','build');
+mButton.append(mButtonIcon);
+
+// add Button to screen
+$('#addTrain').append(mButton);
+
 
 /*  
 Grab what is in the current doc and display in modal
