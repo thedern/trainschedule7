@@ -4,8 +4,6 @@
 // global counter variable so does not get reset to 0 in function call
 var counter = 0;
 
-
-
 /* ==========================================================================
    Connect to Firebase
    ========================================================================== */
@@ -38,6 +36,8 @@ tableRefresh();
 
 $('#enterData').on('click','#submit', function(e) {
     e.preventDefault();
+
+    // create ID for each Train
     
     /* capture the user's input 
        leave time of first train as a string, it will be parsed by moment.js below
@@ -165,6 +165,9 @@ function tableRefresh() {
     //$('#myTable').empty();  
     var localCount = 0;
 
+    var newPostKey = database.ref().child('LU6jYPN2o5zmUCcASkx');
+    console.log(newPostKey);
+
     // get root of DB, this is most logical as we are not assigning ID's but letting Firebase do it
     var dataRoot = database.ref();
     // calls DB with a 'promise' (like ajax call)
@@ -176,9 +179,8 @@ function tableRefresh() {
             // do the math to calculate the next train and remaining mins
             var retValues = trainMath(childData.storedFirstRun, childData.storedFreq);
             
-            console.log(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1]);
-            // via this loop refresh the table with newly entered record
-            // each row was given an ID matching its row count
+            // console.log(childData.storedName, childData.storedDest, childData.storedFreq, retValues[0], retValues[1]);
+            // within loop, refresh the table with updated record, each row was given an ID matching its row count
             localCount++;
            
             // by row ID, replace each row in the table, used replaceWith as append will keep adding to table
@@ -210,55 +212,17 @@ mButton.append(mButtonIcon);
 // add Button to screen
 $('#addTrain').append(mButton);
 
-
-/*  
-Grab what is in the current doc and display in modal
-Update associated record in database
-Update table
-*/
-
 // collect update information from modal after the update button has been clicked
 $('#myModal').on('click','#submitUpdateData', function(e) {
     e.preventDefault();
-    // var btnParent = $(this).parent();
-    //if value length !== 0 udpate db with value
-    var updateCapturedName = $('#updateTNames').val().trim();  
-    console.log(updateCapturedName);
-    var updateCapturedDest = $('#updateTDest').val().trim();
-    var updateCapturedTime = $('#updateTTime').val().trim();
-    // must be parsed as an integer
-    var updateCapturedFreq = parseInt($('#updateTFreq').val().trim());
-
-    if (updateCapturedName.length !== 0) {
-        updatingDB(updateCapturedName);
-    }
-    if (updateCapturedDest.length !== 0) {
-        updatingDB(updateCapturedDest);
-    }
-    if (updateCapturedTime.length !== 0) {
-        updatingDB(updateCapturedTime);
-    }
-    if (updateCapturedFreq.length !== 0) {
-        updatingDB(updateCapturedFreq);
-    }
-    
-
-    // update ... how do I update the correct record
-
-    /*
-    validation.js:218 Uncaught Error: Reference.update failed: First argument  must be an object containing the children to replace.
-    at Object.t.validateFirebaseMergeDataArg (validation.js:218)
-    at t.update (Reference.js:131)
-    at updatingDB (app.js:189)
-    at HTMLAnchorElement.<anonymous> (app.js:174)
-    at HTMLDivElement.dispatch (jquery-3.3.1.min.js:2)
-    at HTMLDivElement.y.handle (jquery-3.3.1.min.js:2) */
-    function updatingDB(newVal) {
-        database.ref().update(newVal);
-    }
-    
-    // listener should pick up updates
-
+    var uName = $('#updateTNames').val();
+    var uDest = $('#updateTDest').val();
+    var uTime = $('#updateTTime').val();
+    var uFreq = $('#updateTFreq').val();
+    console.log(uName);
+    console.log(uDest);
+    console.log(uTime);
+    console.log(uFreq);
 });
 
 /* ==========================================================================
