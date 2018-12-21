@@ -203,10 +203,18 @@ function tableRefresh() {
 
 // click the editBtn td cell, trigger modal
 $(document).on('click', '.editBtn', function() {
-    console.log('this is ',$(this).attr('id'));
+    //console.log('this is ',$(this).attr('id'));
     trainID = $(this).attr('id');
     $('#myModal').modal('toggle');
     
+});
+
+// delete train from DB
+$('#myModal').on('click', '#delTrain', function() {
+    console.log(trainID);
+    database.ref(trainID).remove();
+    // refresh table to display changes
+    tableRefresh();
 });
 
 // collect update information from modal after the update button has been clicked
@@ -236,6 +244,8 @@ $('#myModal').on('click','#submitUpdateData', function(e) {
        
     }
 
+    // refresh table to display changes
+    tableRefresh();
 
     // clear modal
     $('#updateTNames').val('');
