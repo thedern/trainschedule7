@@ -1,8 +1,10 @@
 /* ==========================================================================
-   My one lonely global
+   Global
    ========================================================================== */
 // global counter variable so does not get reset to 0 in function call
 var counter = 0;
+// trainID for used in CRUD functions
+var trainID;
 
 /* ==========================================================================
    Connect to Firebase
@@ -110,7 +112,7 @@ function trainMath(firstRun, runFreq) {
    Update Table Fuction
    ========================================================================== */
 
-function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill) {
+function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill, key) {
     
     //console.log('in update table');
 
@@ -118,7 +120,8 @@ function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill) {
     counter++;
  
     // append new record from listenter
-    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td></tr>');
+    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td><td ><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
+
  
 }
 
@@ -133,14 +136,16 @@ database.ref().on('child_added', function(updatedData) {
 
     // Due to the setInterval function that updates the table every 1 mins, must pass 
     // each field indually to updateTable, cannot simply pass updatedData object as a whole
+    var key = updatedData.ref.key;
     var tdName = (updatedData.val().storedName);
     var tdDestination = (updatedData.val().storedDest);
     var tdFreq = (updatedData.val().storedFreq);
     var tdMinsTill = (updatedData.val().storedMinsTill);
     var tdNextTrain = (updatedData.val().storedNextTrain);
 
+    
     // update the table with newly entered record
-    updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill);
+    updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill, key);
     
 }, function(errorObject) {
     console.log('the DB read to page failed: ', errorObject.code);
@@ -165,17 +170,16 @@ function tableRefresh() {
     //$('#myTable').empty();  
     var localCount = 0;
 
-    var newPostKey = database.ref().child('LU6jYPN2o5zmUCcASkx');
-    console.log(newPostKey);
-
     // get root of DB, this is most logical as we are not assigning ID's but letting Firebase do it
     var dataRoot = database.ref();
     // calls DB with a 'promise' (like ajax call)
     dataRoot.once('value').then(function(snapshot) {
+        
         // iterate through the DB looking at each child, get name
         snapshot.forEach(function(childSnapshot) {
+            // get key value of each object entry in DB
+            var key = childSnapshot.ref.key;
             var childData = childSnapshot.val();
-
             // do the math to calculate the next train and remaining mins
             var retValues = trainMath(childData.storedFirstRun, childData.storedFreq);
             
@@ -184,7 +188,7 @@ function tableRefresh() {
             localCount++;
            
             // by row ID, replace each row in the table, used replaceWith as append will keep adding to table
-            $('tr#'+localCount).replaceWith('<tr id="'+localCount+'"><th scope="row">'+localCount+'</th><td class=tdn>'+childData.storedName+'</td><td class="tdd">'+childData.storedDest+'</td><td class="tdf">'+childData.storedFreq+'</td><td class="tdn">'+retValues[0]+'</td><td class="tdm">'+retValues[1]+'</td></tr>');
+            $('tr#'+localCount).replaceWith('<tr id="'+localCount+'"><th scope="row">'+localCount+'</th><td class=tdn>'+childData.storedName+'</td><td class="tdd">'+childData.storedDest+'</td><td class="tdf">'+childData.storedFreq+'</td><td class="tdn">'+retValues[0]+'</td><td class="tdm">'+retValues[1]+'</td><td ><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
             
         });
         
@@ -197,32 +201,49 @@ function tableRefresh() {
    Click Event on Edit Train - CRUD
    ========================================================================== */
 
-// create modal button for train update
-var mButton = $('<button>');
-mButton.attr('class', 'btn btn-secondary updateTrain float-right');
-mButton.attr('data-toggle','modal');
-mButton.attr('data-target','#myModal');
-
-// add ion-icon to button
-var mButtonIcon = $('<ion-icon>');
-mButtonIcon.attr('size','medium');
-mButtonIcon.attr('name','build');
-mButton.append(mButtonIcon);
-
-// add Button to screen
-$('#addTrain').append(mButton);
+// click the editBtn td cell, trigger modal
+$(document).on('click', '.editBtn', function() {
+    console.log('this is ',$(this).attr('id'));
+    trainID = $(this).attr('id');
+    $('#myModal').modal('toggle');
+    
+});
 
 // collect update information from modal after the update button has been clicked
 $('#myModal').on('click','#submitUpdateData', function(e) {
     e.preventDefault();
-    var uName = $('#updateTNames').val();
-    var uDest = $('#updateTDest').val();
-    var uTime = $('#updateTTime').val();
-    var uFreq = $('#updateTFreq').val();
-    console.log(uName);
-    console.log(uDest);
-    console.log(uTime);
-    console.log(uFreq);
+    var uName = $('#updateTNames').val().trim();
+    var uDest = $('#updateTDest').val().trim();
+    var uTime = $('#updateTTime').val().trim();
+    var uFreq = parseInt($('#updateTFreq').val().trim());
+
+    // store updated data
+    if ((uName.length !== 0 && uTime.length !== 0 && uFreq !== 0 && uDest.length !== 0)) {
+        
+        // do math to update the train's schedule based on initial schedule start time and run frequency
+        var retValues = trainMath(uTime, uFreq);
+        database.ref(trainID).update( {
+            storedName: uName,
+            storedDest: uDest,
+            storedFirstRun: uTime,
+            storedFreq: uFreq,
+            toredNextTrain : retValues[0],
+            storedMinsTill : retValues[1]
+        });
+        
+    } else {
+        alert('For the sake of he developers laziness, please update all data');
+       
+    }
+
+
+    // clear modal
+    $('#updateTNames').val('');
+    $('#updateTDest').val('');
+    $('#updateTTime').val('');
+    $('#updateTFreq').val('');
+
+    
 });
 
 /* ==========================================================================

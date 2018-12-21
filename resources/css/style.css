@@ -38,3 +38,7 @@ body {
 #trainIcon ion-icon {
     font-size: 64px;
 }
+
+.editBtn ion-icon:hover  {
+    cursor: pointer;
+}
