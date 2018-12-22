@@ -120,7 +120,7 @@ function updateTable(tdName, tdDestination, tdFreq, tdNextTrain, tdMinsTill, key
     counter++;
  
     // append new record from listenter
-    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td><td ><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
+    $('#myTable').append('<tr id="'+counter+'"><th scope="row">'+counter+'</th><td class=tdn>'+tdName+'</td><td class="tdd">'+tdDestination+'</td><td class="tdf">'+tdFreq+'</td><td class="tdn">'+tdNextTrain+'</td><td class="tdm">'+tdMinsTill+'</td><td><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
 
  
 }
@@ -188,7 +188,7 @@ function tableRefresh() {
             localCount++;
            
             // by row ID, replace each row in the table, used replaceWith as append will keep adding to table
-            $('tr#'+localCount).replaceWith('<tr id="'+localCount+'"><th scope="row">'+localCount+'</th><td class=tdn>'+childData.storedName+'</td><td class="tdd">'+childData.storedDest+'</td><td class="tdf">'+childData.storedFreq+'</td><td class="tdn">'+retValues[0]+'</td><td class="tdm">'+retValues[1]+'</td><td ><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
+            $('tr#'+localCount).replaceWith('<tr id="'+localCount+'"><th scope="row">'+localCount+'</th><td class=tdn>'+childData.storedName+'</td><td class="tdd">'+childData.storedDest+'</td><td class="tdf">'+childData.storedFreq+'</td><td class="tdn">'+retValues[0]+'</td><td class="tdm">'+retValues[1]+'</td><td><ion-icon class="editBtn" id="'+key+'" size="medium" name="build"></ion-icon></td></tr>');
             
         });
         

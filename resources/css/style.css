@@ -39,6 +39,6 @@ body {
     font-size: 64px;
 }
 
-.editBtn ion-icon:hover  {
+.editBtn:hover  {
     cursor: pointer;
 }
